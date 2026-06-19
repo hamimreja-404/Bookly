@@ -12,32 +12,41 @@
 const { sendText, sendButtons, sendList } = require('../services/whatsapp');
 const { getSession, setSession, clearSession } = require('../services/session');
 const { getAvailableSlots } = require('../utils/slotGenerator');
-const { createBooking, getBookingById, cancelBooking, countTodayBookings } = require('../services/booking');
+const { createBooking, getBookingById, cancelBooking, countTodayBookings, getBookingsByDate } = require('../services/booking');
 const { sendNewBookingAlert } = require('../services/adminAlert');
+
+// ── IST helper ───────────────────────────────────────────────────────────────
+// Render (and most cloud servers) run on UTC. This converts to IST (+5:30)
+// so all time-of-day and date checks are correct for Indian Standard Time.
+function getISTNow() {
+    return new Date(Date.now() + 330 * 60 * 1000); // UTC + 5h 30m
+}
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 function getTodayStr() {
-    return new Date().toISOString().split('T')[0];
+    return getISTNow().toISOString().split('T')[0];
 }
 
 function getTomorrowStr() {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    const ist = getISTNow();
+    ist.setUTCDate(ist.getUTCDate() + 1);
+    return ist.toISOString().split('T')[0];
 }
 
 function formatDateDisplay(dateStr) {
-    const d = new Date(dateStr);
+    const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-IN', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
 }
 
-// Returns true if today's last bookable slot (6:40 PM) has already passed
+// Returns true if today's last bookable slot (6:40 PM IST) has already passed
 function isBookingClosedForToday() {
-    const now = new Date();
-    return now.getHours() > 18 || (now.getHours() === 18 && now.getMinutes() >= 40);
+    const ist = getISTNow();
+    const h = ist.getUTCHours();
+    const m = ist.getUTCMinutes();
+    return h > 18 || (h === 18 && m >= 40);
 }
 
 // ── Period helpers ────────────────────────────────────────────────────────────
@@ -104,6 +113,13 @@ async function sendDateSelection(from, prefixMessage) {
 
 async function handleIncoming(from, messageType, messageBody) {
     try {
+        // ── ADMIN SHORTCUT: admin phone gets today's schedule ─────────────────
+        const adminPhone = process.env.ADMIN_PHONE;
+        if (adminPhone && from === adminPhone) {
+            await handleAdminMessage(from);
+            return;
+        }
+
         const session = await getSession(from);
 
         // Notify user if their session expired mid-flow
@@ -254,6 +270,35 @@ async function handleIncoming(from, messageType, messageBody) {
 }
 
 // ── Step handlers ─────────────────────────────────────────────────────────────
+
+// ── Admin WhatsApp: reply with today's full schedule ─────────────────────────
+async function handleAdminMessage(adminPhone) {
+    const todayStr = getTodayStr();
+    const bookings = await getBookingsByDate(todayStr);
+
+    const todayLabel = new Date(todayStr + 'T00:00:00').toLocaleDateString('en-IN', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    if (bookings.length === 0) {
+        await sendText(adminPhone,
+            `📅 Schedule — ${todayLabel}\n\n` +
+            'No confirmed appointments today.'
+        );
+        return;
+    }
+
+    const lines = bookings.map((b, i) =>
+        `${String(i + 1).padStart(2, ' ')}. [${b.booking_id}] ${b.slot_time.padEnd(8)} — ${b.name} (+${b.phone})`
+    ).join('\n');
+
+    await sendText(adminPhone,
+        `📅 Schedule — ${todayLabel}\n` +
+        `Total: ${bookings.length} appointment(s)\n\n` +
+        lines
+    );
+    console.log(`Admin schedule sent to ${adminPhone} (${bookings.length} bookings)`);
+}
 
 // User picked a date — fetch available future slots, split by period, show buttons
 async function handleDateSelected(from, dateStr) {
