@@ -67,6 +67,7 @@ async function clearSession(phone) {
             session_timeout_at: null,
             pending_action:     null,
             pending_booking_id: null,
+            reschedule_name:    null,
             updated_at:         new Date().toISOString()
         }, { onConflict: 'phone' });
 

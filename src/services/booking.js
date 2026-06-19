@@ -83,7 +83,7 @@ async function getBookingById(bookingId, phone) {
 async function cancelBooking(id) {
     const { error } = await supabase
         .from('bookings')
-        .update({ status: 'cancelled' })
+        .update({ status: 'cancelled', cancelled_reason: 'user_request' })
         .eq('id', id);
 
     if (error) {
@@ -126,10 +126,112 @@ async function getUpcomingReminders() {
     return data || [];
 }
 
+// ── V2.0: Get all confirmed bookings for a specific date ─────────────────────
+async function getBookingsByDate(dateStr) {
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('booking_date', dateStr)
+        .eq('status', 'confirmed')
+        .order('slot_time', { ascending: true });
+
+    if (error) {
+        console.error('Bookings by date error:', error.message);
+        return [];
+    }
+    return data || [];
+}
+
+// ── V2.0: Get confirmed bookings for a date filtered by period ───────────────
+// period = "morning" | "afternoon" | "evening"
+async function getBookingsByDateAndPeriod(dateStr, period) {
+    const all = await getBookingsByDate(dateStr);
+    if (!period) return all;
+
+    return all.filter(b => {
+        const [time, ampm] = b.slot_time.split(' ');
+        let [hour] = time.split(':').map(Number);
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+
+        if (period === 'morning')   return hour < 12 || hour === 12;
+        if (period === 'afternoon') return hour >= 14 && hour < 17;
+        if (period === 'evening')   return hour >= 17;
+        return true;
+    });
+}
+
+// ── V2.0: Cancel all confirmed bookings for a date (or period), mark admin_block ─
+// Returns the list of cancelled bookings so caller can notify patients
+async function cancelBookingsByBlock(dateStr, period = null) {
+    const toCancel = period
+        ? await getBookingsByDateAndPeriod(dateStr, period)
+        : await getBookingsByDate(dateStr);
+
+    if (toCancel.length === 0) return [];
+
+    const ids = toCancel.map(b => b.id);
+    const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', cancelled_reason: 'admin_block' })
+        .in('id', ids);
+
+    if (error) {
+        console.error('Bulk cancel error:', error.message);
+        return [];
+    }
+
+    console.log(`Admin block: cancelled ${toCancel.length} booking(s) on ${dateStr}${period ? ` (${period})` : ''}`);
+    return toCancel;
+}
+
+// ── V2.0: Count today's confirmed bookings (for admin alert) ─────────────────
+async function countTodayBookings() {
+    const now = new Date();
+    const todayStr = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+
+    const { count, error } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('booking_date', todayStr)
+        .eq('status', 'confirmed');
+
+    if (error) return 0;
+    return count || 0;
+}
+
+// ── V2.0: Get all bookings for admin dashboard ───────────────────────────────
+async function getAllBookings({ dateStr, status } = {}) {
+    let query = supabase
+        .from('bookings')
+        .select('*')
+        .order('booking_date', { ascending: false })
+        .order('slot_time',    { ascending: true });
+
+    if (dateStr) query = query.eq('booking_date', dateStr);
+    if (status)  query = query.eq('status', status);
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('getAllBookings error:', error.message);
+        return [];
+    }
+    return data || [];
+}
+
 module.exports = {
     createBooking,
     getBookingById,
     cancelBooking,
     markReminderSent,
-    getUpcomingReminders
+    getUpcomingReminders,
+    getBookingsByDate,
+    getBookingsByDateAndPeriod,
+    cancelBookingsByBlock,
+    countTodayBookings,
+    getAllBookings
 };

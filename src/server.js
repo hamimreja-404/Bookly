@@ -1,10 +1,13 @@
 require('dotenv').config();
-const express = require('express');
+const express    = require('express');
+const cookieParser = require('cookie-parser');
 const { handleIncoming } = require('./handlers/flowHandler');
 const { startReminderCron } = require('./handlers/reminderCron');
+const adminRoutes = require('./admin/adminRoutes');
 
 const app  = express();
 app.use(express.json());
+app.use(cookieParser());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
@@ -25,7 +28,7 @@ app.get('/webhook', (req, res) => {
 
 // 2. Receive Messages
 app.post('/webhook', async (req, res) => {
-    res.sendStatus(200); 
+    res.sendStatus(200);
 
     try {
         const body  = req.body;
@@ -36,8 +39,8 @@ app.post('/webhook', async (req, res) => {
         const messageData = value.messages?.[0];
         if (!messageData) return;
 
-        const from        = messageData.from;         
-        const messageType = messageData.type;         
+        const from        = messageData.from;
+        const messageType = messageData.type;
 
         let messageBody = '';
 
@@ -66,22 +69,28 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
+// 3. Admin Dashboard (V2.0)
+app.use('/admin', adminRoutes);
 
-// 3. Health check
+// 4. Health check
 app.get('/', (req, res) => {
-    res.json({ status: 'running', service: 'WhatsApp Booking Bot' });
+    res.json({ status: 'running', service: 'WhatsApp Booking Bot', version: '2.0' });
 });
-// 4. Start server + reminder cron
+
+// 5. Start server + reminder cron
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log('\n WhatsApp Booking Bot running!');
+    console.log('\n WhatsApp Booking Bot running! (V2.0)');
     console.log(`   Port            : ${PORT}`);
-    console.log(`   PHONE_NUMBER_ID : ${process.env.PHONE_NUMBER_ID ? 'Working' : 'MISSING'}`);
-    console.log(`   ACCESS_TOKEN    : ${process.env.ACCESS_TOKEN    ? 'Working' : 'MISSING'}`);
-    console.log(`   VERIFY_TOKEN    : ${process.env.VERIFY_TOKEN    ? 'Working' : 'MISSING'}`);
-    console.log(`   SUPABASE_URL    : ${process.env.SUPABASE_URL    ? 'Working' : 'MISSING'}`);
-    console.log(`   SUPABASE_KEY    : ${process.env.SUPABASE_KEY    ? 'Working' : 'MISSING'}`);
+    console.log(`   PHONE_NUMBER_ID : ${process.env.PHONE_NUMBER_ID       ? 'Working' : 'MISSING'}`);
+    console.log(`   ACCESS_TOKEN    : ${process.env.ACCESS_TOKEN           ? 'Working' : 'MISSING'}`);
+    console.log(`   VERIFY_TOKEN    : ${process.env.VERIFY_TOKEN           ? 'Working' : 'MISSING'}`);
+    console.log(`   SUPABASE_URL    : ${process.env.SUPABASE_URL           ? 'Working' : 'MISSING'}`);
+    console.log(`   SUPABASE_KEY    : ${process.env.SUPABASE_KEY           ? 'Working' : 'MISSING'}`);
+    console.log(`   ADMIN_PHONE     : ${process.env.ADMIN_PHONE            ? 'Working' : 'MISSING'}`);
+    console.log(`   ADMIN_SESSION   : ${process.env.ADMIN_SESSION_SECRET   ? 'Working' : 'MISSING'}`);
+    console.log(`   Admin Dashboard : http://localhost:${PORT}/admin`);
     console.log('');
 
     startReminderCron();

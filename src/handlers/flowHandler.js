@@ -12,7 +12,8 @@
 const { sendText, sendButtons, sendList } = require('../services/whatsapp');
 const { getSession, setSession, clearSession } = require('../services/session');
 const { getAvailableSlots } = require('../utils/slotGenerator');
-const { createBooking, getBookingById, cancelBooking } = require('../services/booking');
+const { createBooking, getBookingById, cancelBooking, countTodayBookings } = require('../services/booking');
+const { sendNewBookingAlert } = require('../services/adminAlert');
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -365,6 +366,11 @@ async function handleNameReceived(from, session, name) {
     );
 
     console.log(`Booking confirmed: [${booking.booking_id}] ${name} | ${session.selected_date} | ${session.selected_slot}`);
+
+    // V2.0 — Notify admin via WhatsApp (fire-and-forget)
+    countTodayBookings()
+        .then(count => sendNewBookingAlert(booking, count))
+        .catch(err  => console.error('Admin alert error:', err.message));
 }
 
 // User typed a Booking ID for cancel or reschedule

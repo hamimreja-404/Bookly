@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Booking Admin — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+        /* ── Reset & Base ─────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --clr-bg:        #f7f8fa;
+            --clr-surface:   #ffffff;
+            --clr-border:    #e4e7ec;
+            --clr-text:      #111827;
+            --clr-muted:     #6b7280;
+            --clr-accent:    #2563eb;
+            --clr-accent-lt: #eff6ff;
+            --clr-green:     #16a34a;
+            --clr-green-lt:  #f0fdf4;
+            --clr-red:       #dc2626;
+            --clr-red-lt:    #fef2f2;
+            --clr-amber:     #d97706;
+            --clr-amber-lt:  #fffbeb;
+            --radius:        8px;
+            --fs-sm:         0.8125rem;
+            --fs-base:       0.9375rem;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            font-size: var(--fs-base);
+            background: var(--clr-bg);
+            color: var(--clr-text);
+            min-height: 100vh;
+        }
+
+        /* ── Login Screen ─────────────────────────────────────────── */
+        #login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--clr-bg);
+        }
+
+        .login-card {
+            background: var(--clr-surface);
+            border: 1px solid var(--clr-border);
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .login-card h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .login-card p {
+            font-size: var(--fs-sm);
+            color: var(--clr-muted);
+            margin-bottom: 1.75rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: var(--fs-sm);
+            font-weight: 500;
+            margin-bottom: 0.375rem;
+            color: var(--clr-text);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            font-size: var(--fs-base);
+            font-family: inherit;
+            background: #fff;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .form-group input:focus { border-color: var(--clr-accent); }
+
+        #login-error {
+            font-size: var(--fs-sm);
+            color: var(--clr-red);
+            margin-bottom: 0.75rem;
+            display: none;
+        }
+
+        /* ── Buttons ──────────────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            border: 1px solid transparent;
+            font-family: inherit;
+            font-size: var(--fs-sm);
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--clr-accent);
+            color: #fff;
+            border-color: var(--clr-accent);
+            width: 100%;
+            justify-content: center;
+            padding: 0.65rem 1rem;
+            font-size: var(--fs-base);
+        }
+
+        .btn-primary:hover { background: #1d4ed8; }
+
+        .btn-outline {
+            background: #fff;
+            color: var(--clr-text);
+            border-color: var(--clr-border);
+        }
+
+        .btn-outline:hover { background: var(--clr-bg); }
+
+        .btn-danger {
+            background: var(--clr-red-lt);
+            color: var(--clr-red);
+            border-color: #fecaca;
+        }
+
+        .btn-danger:hover { background: #fee2e2; }
+
+        .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+
+        /* ── App Layout ───────────────────────────────────────────── */
+        #app { display: none; }
+
+        header {
+            background: var(--clr-surface);
+            border-bottom: 1px solid var(--clr-border);
+            padding: 0 1.5rem;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 0.75rem; }
+
+        .logo-dot {
+            width: 8px; height: 8px;
+            background: var(--clr-accent);
+            border-radius: 50%;
+        }
+
+        header h1 { font-size: 1rem; font-weight: 600; }
+        header span { font-size: var(--fs-sm); color: var(--clr-muted); }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.75rem 1.25rem;
+        }
+
+        /* ── Section Heading ──────────────────────────────────────── */
+        .section-heading {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--clr-muted);
+            margin-bottom: 0.875rem;
+        }
+
+        /* ── Stats Row ────────────────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--clr-surface);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.25rem 1rem;
+        }
+
+        .stat-label {
+            font-size: var(--fs-sm);
+            color: var(--clr-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-value.green { color: var(--clr-green); }
+        .stat-value.red   { color: var(--clr-red);   }
+        .stat-value.blue  { color: var(--clr-accent); }
+
+        /* ── Card ─────────────────────────────────────────────────── */
+        .card {
+            background: var(--clr-surface);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--clr-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .card-title { font-size: 0.9375rem; font-weight: 600; }
+
+        .card-body { padding: 1.25rem; }
+
+        /* ── Table ────────────────────────────────────────────────── */
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--fs-sm);
+        }
+
+        th {
+            text-align: left;
+            padding: 0.6rem 0.875rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--clr-muted);
+            background: var(--clr-bg);
+            border-bottom: 1px solid var(--clr-border);
+        }
+
+        td {
+            padding: 0.7rem 0.875rem;
+            border-bottom: 1px solid var(--clr-border);
+            vertical-align: middle;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #fafafa; }
+
+        /* ── Badge ────────────────────────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge-green  { background: var(--clr-green-lt); color: var(--clr-green); }
+        .badge-red    { background: var(--clr-red-lt);   color: var(--clr-red);   }
+        .badge-amber  { background: var(--clr-amber-lt); color: var(--clr-amber); }
+
+        /* ── Filter row ───────────────────────────────────────────── */
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-row select,
+        .filter-row input[type="date"] {
+            padding: 0.4rem 0.65rem;
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: var(--fs-sm);
+            background: #fff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .filter-row select:focus,
+        .filter-row input[type="date"]:focus { border-color: var(--clr-accent); }
+
+        /* ── Block Form ───────────────────────────────────────────── */
+        .block-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .block-form select {
+            padding: 0.5rem 0.65rem;
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: var(--fs-sm);
+            background: #fff;
+            outline: none;
+        }
+
+        .block-form select:focus { border-color: var(--clr-accent); }
+
+        .block-form label {
+            font-size: var(--fs-sm);
+            font-weight: 500;
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+
+        .btn-block-submit {
+            background: var(--clr-accent);
+            color: #fff;
+            border: 1px solid var(--clr-accent);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: var(--fs-sm);
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .btn-block-submit:hover { background: #1d4ed8; }
+
+        /* ── Empty state ──────────────────────────────────────────── */
+        .empty {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--clr-muted);
+            font-size: var(--fs-sm);
+        }
+
+        /* ── Toast ────────────────────────────────────────────────── */
+        #toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--clr-text);
+            color: #fff;
+            padding: 0.7rem 1.1rem;
+            border-radius: var(--radius);
+            font-size: var(--fs-sm);
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #toast.show { opacity: 1; transform: translateY(0); }
+        #toast.success { background: var(--clr-green); }
+        #toast.error   { background: var(--clr-red);   }
+
+        /* ── Responsive ───────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .block-form { grid-template-columns: 1fr 1fr; }
+            .block-form .btn-block-submit { grid-column: span 2; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+    <div class="login-card">
+        <h1>Booking Admin</h1>
+        <p>Sign in to manage appointments</p>
+
+        <p id="login-error">Invalid username or password.</p>
+
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Admin_1" autocomplete="username" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════════════════ -->
+<div id="app">
+    <header>
+        <div class="header-left">
+            <div class="logo-dot"></div>
+            <h1>Booking Admin</h1>
+            <span id="today-label"></span>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign Out</button>
+    </header>
+
+    <main>
+
+        <!-- Stats -->
+        <p class="section-heading">Overview</p>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Confirmed Today</div>
+                <div class="stat-value blue" id="stat-today">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Confirmed This Week</div>
+                <div class="stat-value green" id="stat-week">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Cancelled Today</div>
+                <div class="stat-value red" id="stat-cancel">—</div>
+            </div>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Appointments</span>
+                <div class="filter-row">
+                    <input type="date" id="filter-date" onchange="loadBookings()" />
+                    <select id="filter-status" onchange="loadBookings()">
+                        <option value="">All Status</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear</button>
+                    <button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Refresh</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-body">
+                        <tr><td colspan="6" class="empty">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Block Date / Period -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Block a Date or Period</span>
+            </div>
+            <div class="card-body">
+                <div class="block-form">
+                    <div>
+                        <label for="block-date">Select Day</label>
+                        <select id="block-date">
+                            <option value="">— choose day —</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="block-type">Block Type</label>
+                        <select id="block-type" onchange="onBlockTypeChange()">
+                            <option value="day">Full Day</option>
+                            <option value="period">Period Only</option>
+                        </select>
+                    </div>
+                    <div id="period-select-wrap">
+                        <label for="block-period">Period</label>
+                        <select id="block-period">
+                            <option value="morning">Morning (10 AM – 1 PM)</option>
+                            <option value="afternoon">Afternoon (2 PM – 5 PM)</option>
+                            <option value="evening">Evening (5 PM – 7 PM)</option>
+                        </select>
+                    </div>
+                    <button class="btn-block-submit" onclick="submitBlock()">Block &amp; Notify</button>
+                </div>
+                <p style="font-size:0.78rem; color:var(--clr-muted); margin-top:0.75rem;">
+                    Blocking will cancel all affected confirmed bookings and send WhatsApp notifications to patients automatically.
+                </p>
+            </div>
+        </div>
+
+        <!-- Active Blocks -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Active Blocks</span>
+                <button class="btn btn-outline btn-sm" onclick="loadBlocks()">↻ Refresh</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocks-body">
+                        <tr><td colspan="4" class="empty">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  Helpers
+// ══════════════════════════════════════════════════════════
+
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = `show ${type}`;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', weekday: 'short' });
+}
+
+function formatCreated(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' +
+           d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function apiFetch(url, opts = {}) {
+    const res = await fetch(url, { credentials: 'same-origin', ...opts });
+    if (res.status === 401) {
+        showLogin();
+        return null;
+    }
+    return res;
+}
+
+// ══════════════════════════════════════════════════════════
+//  Auth
+// ══════════════════════════════════════════════════════════
+
+async function doLogin() {
+    const btn      = document.getElementById('login-btn');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const errEl    = document.getElementById('login-error');
+
+    errEl.style.display = 'none';
+    btn.textContent = 'Signing in...';
+    btn.disabled    = true;
+
+    try {
+        const res = await fetch('/admin/login', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+            showApp();
+        } else {
+            errEl.style.display = 'block';
+            btn.textContent = 'Sign In';
+            btn.disabled    = false;
+        }
+    } catch (e) {
+        errEl.style.display = 'block';
+        btn.textContent = 'Sign In';
+        btn.disabled    = false;
+    }
+}
+
+async function doLogout() {
+    await fetch('/admin/logout', { method: 'POST', credentials: 'same-origin' });
+    showLogin();
+}
+
+function showLogin() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display          = 'none';
+    document.getElementById('password').value = '';
+}
+
+async function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display          = 'block';
+
+    // Set today label
+    const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('today-label').textContent = today;
+
+    // Set default date filter to today
+    const now = new Date();
+    const todayStr = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    document.getElementById('filter-date').value = todayStr;
+
+    await Promise.all([ loadStats(), loadBookings(), loadBlocks(), loadNext7Days() ]);
+}
+
+// Enter key on password field
+document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+
+// ══════════════════════════════════════════════════════════
+//  Stats
+// ══════════════════════════════════════════════════════════
+
+async function loadStats() {
+    const res = await apiFetch('/admin/api/stats');
+    if (!res) return;
+    const data = await res.json();
+
+    document.getElementById('stat-today').textContent  = data.today;
+    document.getElementById('stat-week').textContent   = data.week;
+    document.getElementById('stat-cancel').textContent = data.cancelToday;
+}
+
+// ══════════════════════════════════════════════════════════
+//  Bookings
+// ══════════════════════════════════════════════════════════
+
+async function loadBookings() {
+    const date   = document.getElementById('filter-date').value;
+    const status = document.getElementById('filter-status').value;
+
+    let url = '/admin/api/bookings?';
+    if (date)   url += `date=${date}&`;
+    if (status) url += `status=${status}&`;
+
+    const res = await apiFetch(url);
+    if (!res) return;
+    const bookings = await res.json();
+
+    const tbody = document.getElementById('bookings-body');
+
+    if (!bookings.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">No appointments found.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = bookings.map(b => {
+        const statusBadge = b.status === 'confirmed'
+            ? '<span class="badge badge-green">Confirmed</span>'
+            : `<span class="badge badge-red">Cancelled${b.cancelled_reason === 'admin_block' ? ' (block)' : ''}</span>`;
+
+        return `<tr>
+            <td style="font-weight:600;">${b.booking_id || '—'}</td>
+            <td>${b.name}</td>
+            <td style="color:var(--clr-muted);">+${b.phone}</td>
+            <td>${formatDate(b.booking_date)}</td>
+            <td style="font-weight:500;">${b.slot_time}</td>
+            <td>${statusBadge}</td>
+        </tr>`;
+    }).join('');
+}
+
+function clearFilters() {
+    const now = new Date();
+    const todayStr = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    document.getElementById('filter-date').value   = todayStr;
+    document.getElementById('filter-status').value = '';
+    loadBookings();
+}
+
+// ══════════════════════════════════════════════════════════
+//  Blocks
+// ══════════════════════════════════════════════════════════
+
+async function loadNext7Days() {
+    const res = await apiFetch('/admin/api/next7days');
+    if (!res) return;
+    const days = await res.json();
+
+    const sel = document.getElementById('block-date');
+    sel.innerHTML = '<option value="">— choose day —</option>' +
+        days.map(d => `<option value="${d.dateStr}">${d.label}${d.isToday ? ' (Today)' : ''}</option>`).join('');
+}
+
+function onBlockTypeChange() {
+    const type = document.getElementById('block-type').value;
+    document.getElementById('period-select-wrap').style.display = type === 'period' ? 'block' : 'none';
+}
+
+// Hide period select initially if full day is default
+document.addEventListener('DOMContentLoaded', () => {
+    onBlockTypeChange();
+});
+
+async function submitBlock() {
+    const block_date = document.getElementById('block-date').value;
+    const type       = document.getElementById('block-type').value;
+    const period     = document.getElementById('block-period').value;
+
+    if (!block_date) { showToast('Please select a day first.', 'error'); return; }
+
+    const label = type === 'day'
+        ? 'full day'
+        : `${period} period`;
+
+    if (!confirm(`Block the ${label} on ${block_date}?\n\nAll confirmed bookings in this window will be cancelled and patients will be notified via WhatsApp.`)) return;
+
+    const res = await apiFetch('/admin/api/blocks', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ block_date, type, period })
+    });
+
+    if (!res) return;
+    const data = await res.json();
+
+    if (data.success) {
+        const msg = data.cancelledCount > 0
+            ? `Blocked! ${data.cancelledCount} booking(s) cancelled & patients notified.`
+            : 'Blocked. No existing bookings were affected.';
+        showToast(msg, 'success');
+        await Promise.all([ loadBlocks(), loadBookings(), loadStats() ]);
+    } else {
+        showToast('Failed to create block. Try again.', 'error');
+    }
+}
+
+async function loadBlocks() {
+    const res = await apiFetch('/admin/api/blocks');
+    if (!res) return;
+    const blocks = await res.json();
+
+    const tbody = document.getElementById('blocks-body');
+
+    if (!blocks.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty">No active blocks.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = blocks.map(b => {
+        const typeLabel = b.slot_time === null && b.period === null
+            ? '<span class="badge badge-red">Full Day</span>'
+            : `<span class="badge badge-amber">${capitalize(b.period || '')} Period</span>`;
+
+        return `<tr>
+            <td style="font-weight:500;">${formatDate(b.block_date)}</td>
+            <td>${typeLabel}</td>
+            <td style="color:var(--clr-muted);">${formatCreated(b.created_at)}</td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteBlock(${b.id})">Remove</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function deleteBlock(id) {
+    if (!confirm('Remove this block? The date/slots will become bookable again.')) return;
+
+    const res = await apiFetch(`/admin/api/blocks/${id}`, { method: 'DELETE' });
+    if (!res) return;
+    const data = await res.json();
+
+    if (data.success) {
+        showToast('Block removed.', 'success');
+        await loadBlocks();
+    } else {
+        showToast('Failed to remove block.', 'error');
+    }
+}
+
+function capitalize(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '—';
+}
+</script>
+</body>
+</html>

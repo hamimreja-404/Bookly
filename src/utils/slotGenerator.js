@@ -1,4 +1,5 @@
 const supabase = require('../services/supabase');
+const { getBlockedSlotsForDate } = require('../services/blockService');
 
 // ── All possible slots in a day (fixed master list) ──────────────────────────
 function buildMasterSlots() {
@@ -13,12 +14,12 @@ function buildMasterSlots() {
     // 2:00 PM → 7:00 PM  (after break — last slot is 6:40 PM so appt ends by 7)
     hour = 14; minute = 0;
     while (hour < 19) {
-        if (hour === 18 && minute > 40) break; 
+        if (hour === 18 && minute > 40) break;
         slots.push(formatSlot(hour, minute));
         minute += 20;
         if (minute >= 60) { minute = 0; hour++; }
     }
-    return slots; 
+    return slots;
 }
 
 function formatSlot(hour, minute) {
@@ -37,7 +38,7 @@ function parseSlot(slotStr) {
     return { hour, minute };
 }
 
-// ── Main exported function
+// ── Main exported function ────────────────────────────────────────────────────
 async function getAvailableSlots(dateStr) {
     // dateStr is "YYYY-MM-DD"
     const master = buildMasterSlots();
@@ -62,7 +63,16 @@ async function getAvailableSlots(dateStr) {
         });
     }
 
-    // 2. Fetch already-booked slots from Supabase for this date
+    // 2. Check if this date is blocked (full day or specific slots) — V2.0
+    const { dayBlocked, slots: blockedSlotSet } = await getBlockedSlotsForDate(dateStr);
+    if (dayBlocked) return []; // entire day blocked → no slots available
+
+    // Remove individually blocked slots
+    if (blockedSlotSet.size > 0) {
+        filtered = filtered.filter(slot => !blockedSlotSet.has(slot));
+    }
+
+    // 3. Fetch already-booked slots from Supabase for this date
     const { data: booked, error } = await supabase
         .from('bookings')
         .select('slot_time')
@@ -71,12 +81,12 @@ async function getAvailableSlots(dateStr) {
 
     if (error) {
         console.error('Supabase error fetching booked slots:', error.message);
-        return filtered; 
+        return filtered;
     }
 
     const bookedTimes = new Set((booked || []).map(b => b.slot_time));
 
-    // 3. Remove booked slots
+    // 4. Remove booked slots
     const available = filtered.filter(slot => !bookedTimes.has(slot));
 
     return available;
@@ -86,9 +96,9 @@ async function getAvailableSlots(dateStr) {
 function buildSlotDatetime(dateStr, slotStr) {
     // dateStr: "2026-06-20", slotStr: "10:20 AM"
     const { hour, minute } = parseSlot(slotStr);
-    const dt = new Date(dateStr);
+    const dt = new Date(dateStr + 'T00:00:00'); // local midnight
     dt.setHours(hour, minute, 0, 0);
     return dt.toISOString();
 }
 
-module.exports = { getAvailableSlots, buildSlotDatetime };
+module.exports = { getAvailableSlots, buildSlotDatetime, buildMasterSlots, parseSlot, formatSlot };
