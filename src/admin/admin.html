@@ -627,17 +627,14 @@ async function showApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display          = 'block';
 
-    // Set today label
-    const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+    // Set today label (IST)
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + istOffset);
+    const today = nowIST.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
     document.getElementById('today-label').textContent = today;
 
-    // Set default date filter to today
-    const now = new Date();
-    const todayStr = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0')
-    ].join('-');
+    // Set default date filter to today (IST)
+    const todayStr = nowIST.toISOString().split('T')[0];
     document.getElementById('filter-date').value = todayStr;
 
     await Promise.all([ loadStats(), loadBookings(), loadBlocks(), loadNext7Days() ]);
@@ -702,12 +699,9 @@ async function loadBookings() {
 }
 
 function clearFilters() {
-    const now = new Date();
-    const todayStr = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0')
-    ].join('-');
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + istOffset);
+    const todayStr = nowIST.toISOString().split('T')[0];
     document.getElementById('filter-date').value   = todayStr;
     document.getElementById('filter-status').value = '';
     loadBookings();

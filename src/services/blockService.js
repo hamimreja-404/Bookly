@@ -117,16 +117,40 @@ async function isDateFullyBlocked(dateStr) {
     return (data && data.length > 0);
 }
 
+// Helper: get slot times for a period (Morning, Afternoon, Evening)
+function getSlotsForPeriod(period) {
+    if (period === 'morning') {
+        return ['10:00 AM', '10:20 AM', '10:40 AM', '11:00 AM', '11:20 AM', '11:40 AM', '12:00 PM', '12:20 PM', '12:40 PM'];
+    }
+    if (period === 'afternoon') {
+        return ['2:00 PM', '2:20 PM', '2:40 PM', '3:00 PM', '3:20 PM', '3:40 PM', '4:00 PM', '4:20 PM', '4:40 PM'];
+    }
+    if (period === 'evening') {
+        return ['5:00 PM', '5:20 PM', '5:40 PM', '6:00 PM', '6:20 PM', '6:40 PM'];
+    }
+    return [];
+}
+
 // ── Get all blocked slot_times for a specific date ───────────────────────────
 // Returns a Set of blocked slot strings e.g. {"10:00 AM", "2:00 PM"}
 async function getBlockedSlotsForDate(dateStr) {
     const blocks = await getBlocksForDate(dateStr);
 
-    // If any block has slot_time = null → entire day is blocked
-    const dayBlocked = blocks.some(b => b.slot_time === null);
+    // If any block has slot_time = null AND period = null → entire day is blocked
+    const dayBlocked = blocks.some(b => b.slot_time === null && b.period === null);
     if (dayBlocked) return { dayBlocked: true, slots: new Set() };
 
-    const slots = new Set(blocks.map(b => b.slot_time).filter(Boolean));
+    const slots = new Set();
+    for (const b of blocks) {
+        if (b.slot_time) {
+            slots.add(b.slot_time);
+        } else if (b.period) {
+            const periodSlots = getSlotsForPeriod(b.period);
+            for (const s of periodSlots) {
+                slots.add(s);
+            }
+        }
+    }
     return { dayBlocked: false, slots };
 }
 

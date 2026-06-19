@@ -93,8 +93,10 @@ async function getAvailableSlots(dateStr) {
 function buildSlotDatetime(dateStr, slotStr) {
     // dateStr: "2026-06-20", slotStr: "10:20 AM"
     const { hour, minute } = parseSlot(slotStr);
-    const dt = new Date(dateStr + 'T00:00:00'); // local midnight
-    dt.setHours(hour, minute, 0, 0);
+    const hh = String(hour).padStart(2, '0');
+    const mm = String(minute).padStart(2, '0');
+    // Parse directly as an IST (+05:30) timestamp so it translates to correct UTC absolute time
+    const dt = new Date(`${dateStr}T${hh}:${mm}:00+05:30`);
     return dt.toISOString();
 }
 

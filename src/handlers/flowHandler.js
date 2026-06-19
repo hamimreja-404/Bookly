@@ -421,6 +421,15 @@ async function handleNameReceived(from, session, name) {
         return;
     }
 
+    // If rescheduling, cancel the old booking now that the new one is successfully confirmed
+    if (session.pending_action === 'reschedule' && session.pending_booking_id) {
+        const oldBooking = await getBookingById(session.pending_booking_id, from);
+        if (oldBooking) {
+            await cancelBooking(oldBooking.id);
+            console.log(`Reschedule: Cancelled old booking [${session.pending_booking_id}] for user ${from}`);
+        }
+    }
+
     await clearSession(from);
 
     await sendText(from,
@@ -478,23 +487,17 @@ async function handleActionId(from, session, rawId) {
         );
 
     } else if (session.pending_action === 'reschedule') {
-        // Cancel old booking immediately to release the slot
-        const cancelled = await cancelBooking(booking.id);
-        if (!cancelled) {
-            await sendText(from, 'Something went wrong cancelling your old booking. Please try again or send *Book*.');
-            await clearSession(from);
-            return;
-        }
-
+        // Do not cancel the old booking yet.
+        // Let us find a new slot first. The old booking will be cancelled only when the new one is successfully booked.
         await sendText(from,
-            `Booking *${booking.booking_id}* has been cancelled and the slot released.\n\n` +
-            'Let us find you a new time.'
+            'Let us find you a new time first.\n\n' +
+            'Note: Your current booking will remain active until you confirm your new appointment.'
         );
 
-        // Store the customer's existing name so we don't ask again
+        // Store the customer's existing name and action details so we don't ask again
         await setSession(from, {
-            pending_action:     null,
-            pending_booking_id: null,
+            pending_action:     'reschedule',
+            pending_booking_id: booking.booking_id,
             selected_date:      null,
             selected_slot:      null,
             reschedule_name:    booking.name   // ← carry over the name
