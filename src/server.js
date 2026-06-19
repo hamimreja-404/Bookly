@@ -50,7 +50,12 @@ app.post('/webhook', async (req, res) => {
                 '';
         } else {
             const { sendText } = require('./services/whatsapp');
-            await sendText(from, `Sorry, I only understand text messages right now. Send *Book* to book an appointment.`);
+            await sendText(from,
+                    'Sorry, I can only read text messages and button / list taps.\n\n' +
+                    '- Send *Book* to book an appointment\n' +
+                    '- Send *Cancel* to cancel a booking\n' +
+                    '- Send *Reschedule* to reschedule a booking'
+                );
             return;
         }
 
