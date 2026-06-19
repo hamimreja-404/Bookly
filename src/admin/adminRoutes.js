@@ -157,10 +157,9 @@ router.post('/api/blocks', requireAuth, express.json(), async (req, res) => {
     }
 
     if (!block) {
-        console.error('Block creation failed for', block_date, type, period);
-        return res.status(503).json({
-            error: 'Block table not ready. Please run the V2.0 SQL migration in Supabase SQL Editor first.',
-            hint:  'Create the blocked_slots table using sql/schema.sql V2.0 migration block.'
+        console.error('Block creation failed — check Render logs for Supabase error details');
+        return res.status(500).json({
+            error: 'Failed to create block. Check server logs for details.'
         });
     }
 
