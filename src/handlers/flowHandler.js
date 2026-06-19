@@ -290,7 +290,7 @@ async function handleAdminMessage(adminPhone) {
 
     if (bookings.length === 0) {
         await sendText(adminPhone,
-            '📅 Full Appointment Schedule\n\n' +
+            'Full Appointment Schedule\n\n' +
             'No upcoming confirmed appointments.'
         );
         return;
@@ -306,7 +306,7 @@ async function handleAdminMessage(adminPhone) {
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const todayStr = getTodayStr();
 
-    let text = `📅 Full Appointment Schedule\nTotal: ${bookings.length} appointment(s)\n`;
+    let text = `Full Appointment Schedule\nTotal: ${bookings.length} appointment(s)\n`;
 
     for (const [dateStr, dayBookings] of Object.entries(byDate)) {
         const d = new Date(dateStr + 'T00:00:00');
