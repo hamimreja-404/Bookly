@@ -318,9 +318,15 @@ async function handlePeriodSelected(from, session, period) {
     );
 }
 
-// User picked a slot — ask for their name
+// User picked a slot — ask for their name (or skip if rescheduling with existing name)
 async function handleSlotSelected(from, session, slotTime) {
     await setSession(from, { step: 'awaiting_name', selected_slot: slotTime });
+
+    // If rescheduling, we already have the customer's name — skip asking again
+    if (session.reschedule_name) {
+        await handleNameReceived(from, { ...session, selected_slot: slotTime }, session.reschedule_name);
+        return;
+    }
 
     await sendText(from,
         `You selected *${slotTime}* on *${formatDateDisplay(session.selected_date)}*\n\n` +
@@ -410,12 +416,13 @@ async function handleActionId(from, session, rawId) {
             'Let us find you a new time.'
         );
 
-        // Clear pending state then start a fresh date selection
+        // Store the customer's existing name so we don't ask again
         await setSession(from, {
             pending_action:     null,
             pending_booking_id: null,
             selected_date:      null,
-            selected_slot:      null
+            selected_slot:      null,
+            reschedule_name:    booking.name   // ← carry over the name
         });
         await sendDateSelection(from, 'Book a New Appointment');
     }

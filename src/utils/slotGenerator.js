@@ -44,17 +44,18 @@ async function getAvailableSlots(dateStr) {
     const now    = new Date();
 
     // 1. If the date is today, filter out past slots
-    const selectedDate = new Date(dateStr);
-    const isToday = (
-        selectedDate.getFullYear() === now.getFullYear() &&
-        selectedDate.getMonth()    === now.getMonth()    &&
-        selectedDate.getDate()     === now.getDate()
-    );
+    // Use local date string comparison to avoid UTC vs IST timezone confusion
+    const localTodayStr = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    const isToday = (dateStr === localTodayStr);
 
     let filtered = master;
     if (isToday) {
-        // Round current time up to the next 20-min boundary + 1 slot buffer
-        const nowMinutes = now.getHours() * 60 + now.getMinutes() + 20;
+        // Filter slots that are at least 40 minutes from now
+        const nowMinutes = now.getHours() * 60 + now.getMinutes() + 40;
         filtered = master.filter(slot => {
             const { hour, minute } = parseSlot(slot);
             return (hour * 60 + minute) >= nowMinutes;
