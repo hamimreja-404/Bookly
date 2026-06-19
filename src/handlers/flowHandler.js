@@ -12,7 +12,7 @@
 const { sendText, sendButtons, sendList } = require('../services/whatsapp');
 const { getSession, setSession, clearSession } = require('../services/session');
 const { getAvailableSlots } = require('../utils/slotGenerator');
-const { createBooking, getBookingById, cancelBooking, countTodayBookings, getBookingsByDate } = require('../services/booking');
+const { createBooking, getBookingById, cancelBooking, countTodayBookings, getBookingsByDate, getUpcomingBookings } = require('../services/booking');
 const { sendNewBookingAlert } = require('../services/adminAlert');
 
 // ── IST helper ───────────────────────────────────────────────────────────────
@@ -84,18 +84,27 @@ function buildPeriodButtons(periods) {
 
 // ── Date selection helper (shared by Book and Reschedule) ─────────────────────
 
+// Format a date from an IST-shifted Date object (UTC methods give IST values)
+function formatISTLabel(istDate) {
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${istDate.getUTCDate()} ${MONTHS[istDate.getUTCMonth()]}`;
+}
+
 async function sendDateSelection(from, prefixMessage) {
     const closed = isBookingClosedForToday();
 
-    const tomorrowDate = new Date();
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-    const tomorrowLabel = `Tomorrow (${tomorrowDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+    // IST-correct dates for button labels
+    const istToday    = getISTNow();
+    const istTomorrow = new Date(Date.now() + 330 * 60 * 1000);
+    istTomorrow.setUTCDate(istTomorrow.getUTCDate() + 1);
+
+    const tomorrowLabel = `Tomorrow (${formatISTLabel(istTomorrow)})`;
 
     const buttons = [];
     let bodyText;
 
     if (!closed) {
-        const todayLabel = `Today (${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`;
+        const todayLabel = `Today (${formatISTLabel(istToday)})`;
         buttons.push({ id: 'date_today',    title: todayLabel });
         buttons.push({ id: 'date_tomorrow', title: tomorrowLabel });
         bodyText = (prefixMessage ? prefixMessage + '\n\n' : '') + 'Which day would you like?';
@@ -113,11 +122,15 @@ async function sendDateSelection(from, prefixMessage) {
 
 async function handleIncoming(from, messageType, messageBody) {
     try {
-        // ── ADMIN SHORTCUT: admin phone gets today's schedule ─────────────────
+        // ── ADMIN SHORTCUT: only "list" / "schedule" → show today's appointments ──
         const adminPhone = process.env.ADMIN_PHONE;
-        if (adminPhone && from === adminPhone) {
-            await handleAdminMessage(from);
-            return;
+        if (adminPhone && from === adminPhone && messageType === 'text') {
+            const cmd = (messageBody || '').toLowerCase().trim();
+            if (cmd === 'list' || cmd === 'schedule') {
+                await handleAdminMessage(from);
+                return;
+            }
+            // Any other message → fall through to normal booking flow
         }
 
         const session = await getSession(from);
@@ -271,33 +284,44 @@ async function handleIncoming(from, messageType, messageBody) {
 
 // ── Step handlers ─────────────────────────────────────────────────────────────
 
-// ── Admin WhatsApp: reply with today's full schedule ─────────────────────────
+// ── Admin WhatsApp: reply with FULL upcoming schedule (today + future) ─────────
 async function handleAdminMessage(adminPhone) {
-    const todayStr = getTodayStr();
-    const bookings = await getBookingsByDate(todayStr);
-
-    const todayLabel = new Date(todayStr + 'T00:00:00').toLocaleDateString('en-IN', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    });
+    const bookings = await getUpcomingBookings(); // today + all future confirmed
 
     if (bookings.length === 0) {
         await sendText(adminPhone,
-            `📅 Schedule — ${todayLabel}\n\n` +
-            'No confirmed appointments today.'
+            '📅 Full Appointment Schedule\n\n' +
+            'No upcoming confirmed appointments.'
         );
         return;
     }
 
-    const lines = bookings.map((b, i) =>
-        `${String(i + 1).padStart(2, ' ')}. [${b.booking_id}] ${b.slot_time.padEnd(8)} — ${b.name} (+${b.phone})`
-    ).join('\n');
+    // Group by date
+    const byDate = {};
+    for (const b of bookings) {
+        if (!byDate[b.booking_date]) byDate[b.booking_date] = [];
+        byDate[b.booking_date].push(b);
+    }
 
-    await sendText(adminPhone,
-        `📅 Schedule — ${todayLabel}\n` +
-        `Total: ${bookings.length} appointment(s)\n\n` +
-        lines
-    );
-    console.log(`Admin schedule sent to ${adminPhone} (${bookings.length} bookings)`);
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const todayStr = getTodayStr();
+
+    let text = `📅 Full Appointment Schedule\nTotal: ${bookings.length} appointment(s)\n`;
+
+    for (const [dateStr, dayBookings] of Object.entries(byDate)) {
+        const d = new Date(dateStr + 'T00:00:00');
+        const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const dayLabel = dateStr === todayStr ? 'Today' : `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+
+        text += `\n— ${dayLabel} (${dayBookings.length}) —\n`;
+        text += dayBookings.map((b, i) =>
+            `${String(i + 1).padStart(2, ' ')}. [${b.booking_id}] ${b.slot_time} — ${b.name}`
+        ).join('\n');
+        text += '\n';
+    }
+
+    await sendText(adminPhone, text);
+    console.log(`Admin full schedule sent to ${adminPhone} (${bookings.length} bookings across ${Object.keys(byDate).length} day(s))`);
 }
 
 // User picked a date — fetch available future slots, split by period, show buttons

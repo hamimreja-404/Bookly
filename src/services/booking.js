@@ -171,14 +171,24 @@ async function cancelBookingsByBlock(dateStr, period = null) {
     if (toCancel.length === 0) return [];
 
     const ids = toCancel.map(b => b.id);
-    const { error } = await supabase
+
+    // Try with cancelled_reason (V2.0 schema) — fall back without it (V1.x schema)
+    let { error } = await supabase
         .from('bookings')
         .update({ status: 'cancelled', cancelled_reason: 'admin_block' })
         .in('id', ids);
 
     if (error) {
-        console.error('Bulk cancel error:', error.message);
-        return [];
+        // Column might not exist yet — retry with just status
+        console.warn('cancelBookingsByBlock: retrying without cancelled_reason:', error.message);
+        const retry = await supabase
+            .from('bookings')
+            .update({ status: 'cancelled' })
+            .in('id', ids);
+        if (retry.error) {
+            console.error('Bulk cancel error:', retry.error.message);
+            return [];
+        }
     }
 
     console.log(`Admin block: cancelled ${toCancel.length} booking(s) on ${dateStr}${period ? ` (${period})` : ''}`);
@@ -187,12 +197,9 @@ async function cancelBookingsByBlock(dateStr, period = null) {
 
 // ── V2.0: Count today's confirmed bookings (for admin alert) ─────────────────
 async function countTodayBookings() {
-    const now = new Date();
-    const todayStr = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0')
-    ].join('-');
+    // IST date
+    const istNow   = new Date(Date.now() + 330 * 60 * 1000);
+    const todayStr = istNow.toISOString().split('T')[0];
 
     const { count, error } = await supabase
         .from('bookings')
@@ -202,6 +209,26 @@ async function countTodayBookings() {
 
     if (error) return 0;
     return count || 0;
+}
+
+// ── V2.0: All confirmed bookings from today onward (for admin full schedule) ───
+async function getUpcomingBookings() {
+    const istNow   = new Date(Date.now() + 330 * 60 * 1000);
+    const todayStr = istNow.toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('status', 'confirmed')
+        .gte('booking_date', todayStr)
+        .order('booking_date', { ascending: true })
+        .order('slot_time',    { ascending: true });
+
+    if (error) {
+        console.error('getUpcomingBookings error:', error.message);
+        return [];
+    }
+    return data || [];
 }
 
 // ── V2.0: Get all bookings for admin dashboard ───────────────────────────────
@@ -233,5 +260,6 @@ module.exports = {
     getBookingsByDateAndPeriod,
     cancelBookingsByBlock,
     countTodayBookings,
+    getUpcomingBookings,
     getAllBookings
 };

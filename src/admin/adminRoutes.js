@@ -133,7 +133,7 @@ router.get('/api/slots/:dateStr', requireAuth, (req, res) => {
     res.json(slots);
 });
 
-// ── POST /admin/api/blocks ────────────────────────────────────────────────────
+// ── POST /admin/api/blocks ─────────────────────────────────────────────────
 router.post('/api/blocks', requireAuth, express.json(), async (req, res) => {
     const { block_date, type, period } = req.body || {};
 
@@ -143,13 +143,26 @@ router.post('/api/blocks', requireAuth, express.json(), async (req, res) => {
         return res.status(400).json({ error: 'period must be morning, afternoon, or evening' });
     }
 
-    const block = await createBlock({
-        block_date,
-        slot_time: null,
-        period:    type === 'day' ? null : period
-    });
+    // Create block (will fail if blocked_slots table doesn't exist — run V2.0 SQL migration)
+    let block;
+    try {
+        block = await createBlock({
+            block_date,
+            slot_time: null,
+            period:    type === 'day' ? null : period
+        });
+    } catch (e) {
+        console.error('createBlock threw:', e.message);
+        block = null;
+    }
 
-    if (!block) return res.status(500).json({ error: 'Failed to create block' });
+    if (!block) {
+        console.error('Block creation failed for', block_date, type, period);
+        return res.status(503).json({
+            error: 'Block table not ready. Please run the V2.0 SQL migration in Supabase SQL Editor first.',
+            hint:  'Create the blocked_slots table using sql/schema.sql V2.0 migration block.'
+        });
+    }
 
     const cancelledBookings = await cancelBookingsByBlock(
         block_date,
